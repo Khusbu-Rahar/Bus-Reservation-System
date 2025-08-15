@@ -1,0 +1,97 @@
+-- 1. Database create & use
+CREATE DATABASE IF NOT EXISTS bus_reservation_system;
+USE bus_reservation_system;
+
+-- 2. Tables
+CREATE TABLE routes (
+    route_id INT PRIMARY KEY AUTO_INCREMENT,
+    source VARCHAR(50),
+    destination VARCHAR(50),
+    distance_km INT
+);
+
+CREATE TABLE buses (
+    bus_id INT PRIMARY KEY AUTO_INCREMENT,
+    bus_number VARCHAR(20),
+    route_id INT,
+    capacity INT,
+    available_seats INT,
+    FOREIGN KEY (route_id) REFERENCES routes(route_id)
+);
+
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50),
+    password VARCHAR(50)
+);
+
+CREATE TABLE bookings (
+    booking_id INT PRIMARY KEY AUTO_INCREMENT,
+    passenger_name VARCHAR(50),
+    seat_no INT,
+    bus_id INT,
+    user_id INT,
+    booking_date DATE,
+    FOREIGN KEY (bus_id) REFERENCES buses(bus_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- 3. Insert sample data
+INSERT INTO routes (source, destination, distance_km) VALUES
+('Delhi', 'Jaipur', 280),
+('Mumbai', 'Pune', 150);
+
+INSERT INTO buses (bus_number, route_id, capacity, available_seats) VALUES
+('DL101', 1, 40, 40),
+('MH202', 2, 50, 50);
+
+INSERT INTO users (username, password) VALUES
+('reet', '1234'),
+('admin', 'admin');
+
+-- 4. Trigger for booking (decrease seat)
+DELIMITER //
+CREATE TRIGGER after_booking_insert
+AFTER INSERT ON bookings
+FOR EACH ROW
+BEGIN
+    UPDATE buses 
+    SET available_seats = available_seats - 1
+    WHERE bus_id = NEW.bus_id;
+END //
+DELIMITER ;
+
+-- 5. Trigger for cancellation (increase seat)
+DELIMITER //
+CREATE TRIGGER after_booking_delete
+AFTER DELETE ON bookings
+FOR EACH ROW
+BEGIN
+    UPDATE buses 
+    SET available_seats = available_seats + 1
+    WHERE bus_id = OLD.bus_id;
+END //
+DELIMITER ;
+
+-- 6. Procedure for cancelling booking
+DELIMITER //
+CREATE PROCEDURE cancel_booking(IN p_booking_id INT)
+BEGIN
+    DELETE FROM bookings WHERE booking_id = p_booking_id;
+END //
+DELIMITER ;
+
+-- -----------------------------------
+-- DEMO:
+-- Booking a seat (seat auto decrease)
+INSERT INTO bookings (passenger_name, seat_no, bus_id, user_id, booking_date)
+VALUES ('Reet Sharma', 5, 1, 1, CURDATE());
+
+-- Check buses table after booking
+SELECT * FROM buses;
+
+-- Cancel booking (seat auto increase)
+CALL cancel_booking(1);
+
+-- Check buses table after cancellation
+SELECT * FROM buses;
