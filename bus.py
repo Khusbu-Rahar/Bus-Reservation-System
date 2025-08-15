@@ -1,178 +1,97 @@
-import tkinter as tk
-from tkinter import messagebox
+-- 1. Database create & use
+CREATE DATABASE IF NOT EXISTS bus_reservation_system;
+USE bus_reservation_system;
 
-# Predefined user credentials
-users = {
-    "user1": "pass1",
-    "user2": "pass2",
-    "user3": "pass3",
-    "user4": "pass4",
-    "user5": "pass5"
-}
+-- 2. Tables
+CREATE TABLE routes (
+    route_id INT PRIMARY KEY AUTO_INCREMENT,
+    source VARCHAR(50),
+    destination VARCHAR(50),
+    distance_km INT
+);
 
-# Bus data
-buses = {
-    101: {"source": "City A", "destination": "City B", "totalSeats": 50, "availableSeats": 50, "fare": 500.0},
-    102: {"source": "City C", "destination": "City D", "totalSeats": 40, "availableSeats": 40, "fare": 400.0},
-    103: {"source": "City E", "destination": "City F", "totalSeats": 30, "availableSeats": 30, "fare": 300.0},
-}
+CREATE TABLE buses (
+    bus_id INT PRIMARY KEY AUTO_INCREMENT,
+    bus_number VARCHAR(20),
+    route_id INT,
+    capacity INT,
+    available_seats INT,
+    FOREIGN KEY (route_id) REFERENCES routes(route_id)
+);
 
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50),
+    password VARCHAR(50)
+);
 
-class BusReservationApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Bus Reservation System")
-        self.logged_in_user = None
-        self.login_screen()
+CREATE TABLE bookings (
+    booking_id INT PRIMARY KEY AUTO_INCREMENT,
+    passenger_name VARCHAR(50),
+    seat_no INT,
+    bus_id INT,
+    user_id INT,
+    booking_date DATE,
+    FOREIGN KEY (bus_id) REFERENCES buses(bus_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
 
-    def login_screen(self):
-        self.clear_window()
+-- 3. Insert sample data
+INSERT INTO routes (source, destination, distance_km) VALUES
+('Delhi', 'Jaipur', 280),
+('Mumbai', 'Pune', 150);
 
-        tk.Label(self.root, text="Login", font=("Arial", 16)).pack(pady=10)
-        tk.Label(self.root, text="Username").pack()
-        self.username_entry = tk.Entry(self.root)
-        self.username_entry.pack()
-        tk.Label(self.root, text="Password").pack()
-        self.password_entry = tk.Entry(self.root, show="*")
-        self.password_entry.pack()
+INSERT INTO buses (bus_number, route_id, capacity, available_seats) VALUES
+('DL101', 1, 40, 40),
+('MH202', 2, 50, 50);
 
-        tk.Button(self.root, text="Login", command=self.login).pack(pady=10)
+INSERT INTO users (username, password) VALUES
+('reet', '1234'),
+('admin', 'admin');
 
-    def main_menu(self):
-        self.clear_window()
-        tk.Label(self.root, text=f"Welcome, {self.logged_in_user}", font=("Arial", 14)).pack(pady=10)
+-- 4. Trigger for booking (decrease seat)
+DELIMITER //
+CREATE TRIGGER after_booking_insert
+AFTER INSERT ON bookings
+FOR EACH ROW
+BEGIN
+    UPDATE buses 
+    SET available_seats = available_seats - 1
+    WHERE bus_id = NEW.bus_id;
+END //
+DELIMITER ;
 
-        tk.Button(self.root, text="Book Ticket", width=20, command=self.book_ticket_screen).pack(pady=5)
-        tk.Button(self.root, text="Cancel Ticket", width=20, command=self.cancel_ticket_screen).pack(pady=5)
-        tk.Button(self.root, text="Check Bus Status", width=20, command=self.check_status_screen).pack(pady=5)
-        tk.Button(self.root, text="Logout", width=20, command=self.logout).pack(pady=5)
+-- 5. Trigger for cancellation (increase seat)
+DELIMITER //
+CREATE TRIGGER after_booking_delete
+AFTER DELETE ON bookings
+FOR EACH ROW
+BEGIN
+    UPDATE buses 
+    SET available_seats = available_seats + 1
+    WHERE bus_id = OLD.bus_id;
+END //
+DELIMITER ;
 
-    def book_ticket_screen(self):
-        self.clear_window()
-        tk.Label(self.root, text="Book Ticket", font=("Arial", 14)).pack(pady=10)
+-- 6. Procedure for cancelling booking
+DELIMITER //
+CREATE PROCEDURE cancel_booking(IN p_booking_id INT)
+BEGIN
+    DELETE FROM bookings WHERE booking_id = p_booking_id;
+END //
+DELIMITER ;
 
-        tk.Label(self.root, text="Bus Number").pack()
-        self.bus_number_entry = tk.Entry(self.root)
-        self.bus_number_entry.pack()
+-- -----------------------------------
+-- DEMO:
+-- Booking a seat (seat auto decrease)
+INSERT INTO bookings (passenger_name, seat_no, bus_id, user_id, booking_date)
+VALUES ('Reet Sharma', 5, 1, 1, CURDATE());
 
-        tk.Label(self.root, text="Number of Seats").pack()
-        self.seats_entry = tk.Entry(self.root)
-        self.seats_entry.pack()
+-- Check buses table after booking
+SELECT * FROM buses;
 
-        tk.Button(self.root, text="Book", command=self.book_ticket).pack(pady=10)
-        tk.Button(self.root, text="Back", command=self.main_menu).pack()
+-- Cancel booking (seat auto increase)
+CALL cancel_booking(1);
 
-    def cancel_ticket_screen(self):
-        self.clear_window()
-        tk.Label(self.root, text="Cancel Ticket", font=("Arial", 14)).pack(pady=10)
-
-        tk.Label(self.root, text="Bus Number").pack()
-        self.cancel_bus_number_entry = tk.Entry(self.root)
-        self.cancel_bus_number_entry.pack()
-
-        tk.Label(self.root, text="Seats to Cancel").pack()
-        self.cancel_seats_entry = tk.Entry(self.root)
-        self.cancel_seats_entry.pack()
-
-        tk.Button(self.root, text="Cancel", command=self.cancel_ticket).pack(pady=10)
-        tk.Button(self.root, text="Back", command=self.main_menu).pack()
-
-    def check_status_screen(self):
-        self.clear_window()
-        tk.Label(self.root, text="Check Bus Status", font=("Arial", 14)).pack(pady=10)
-
-        tk.Label(self.root, text="Bus Number").pack()
-        self.status_bus_number_entry = tk.Entry(self.root)
-        self.status_bus_number_entry.pack()
-
-        tk.Button(self.root, text="Check", command=self.check_bus_status).pack(pady=10)
-        tk.Button(self.root, text="Back", command=self.main_menu).pack()
-
-    def login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-
-        if username in users and users[username] == password:
-            self.logged_in_user = username
-            messagebox.showinfo("Login", "Login successful!")
-            self.main_menu()
-        else:
-            messagebox.showerror("Login", "Invalid username or password.")
-
-    def logout(self):
-        self.logged_in_user = None
-        self.login_screen()
-
-    def book_ticket(self):
-        try:
-            bus_number = int(self.bus_number_entry.get())
-            seats = int(self.seats_entry.get())
-
-            if bus_number not in buses:
-                messagebox.showerror("Error", "Bus not found.")
-                return
-
-            bus = buses[bus_number]
-
-            if bus["availableSeats"] < seats:
-                messagebox.showwarning("Warning", f"Only {bus['availableSeats']} seats are available.")
-            else:
-                bus["availableSeats"] -= seats
-                messagebox.showinfo("Success", f"{seats} seat(s) booked on Bus {bus_number}.")
-                self.main_menu()
-        except ValueError:
-            messagebox.showerror("Error", "Invalid input.")
-
-    def cancel_ticket(self):
-        try:
-            bus_number = int(self.cancel_bus_number_entry.get())
-            seats = int(self.cancel_seats_entry.get())
-
-            if bus_number not in buses:
-                messagebox.showerror("Error", "Bus not found.")
-                return
-
-            bus = buses[bus_number]
-            booked_seats = bus["totalSeats"] - bus["availableSeats"]
-
-            if seats > booked_seats:
-                messagebox.showwarning("Warning", "Cannot cancel more seats than booked.")
-            else:
-                bus["availableSeats"] += seats
-                messagebox.showinfo("Success", f"{seats} seat(s) cancelled on Bus {bus_number}.")
-                self.main_menu()
-        except ValueError:
-            messagebox.showerror("Error", "Invalid input.")
-
-    def check_bus_status(self):
-        try:
-            bus_number = int(self.status_bus_number_entry.get())
-
-            if bus_number not in buses:
-                messagebox.showerror("Error", "Bus not found.")
-                return
-
-            bus = buses[bus_number]
-            status = (
-                f"Bus Number: {bus_number}\n"
-                f"Source: {bus['source']}\n"
-                f"Destination: {bus['destination']}\n"
-                f"Total Seats: {bus['totalSeats']}\n"
-                f"Available Seats: {bus['availableSeats']}\n"
-                f"Fare: {bus['fare']}"
-            )
-            messagebox.showinfo("Bus Status", status)
-        except ValueError:
-            messagebox.showerror("Error", "Invalid input.")
-
-    def clear_window(self):
-        for widget in self.root.winfo_children():
-            widget.destroy()
-
-
-# Run the GUI application
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.geometry("350x400")
-    app = BusReservationApp(root)
-    root.mainloop()
+-- Check buses table after cancellation
+SELECT * FROM buses;
