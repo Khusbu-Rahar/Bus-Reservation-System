@@ -1,27 +1,77 @@
-Bus Reservation System
-A user-friendly bus reservation system built using Python and Tkinter. Book, cancel, and check bus ticket availability—all through a simple graphical interface designed for quick interactions.
+Bus Reservation System (SQL Version)
+Overview
 
-Tech Stack
-Python: Core programming language used for application logic.
-Tkinter: Python's standard GUI library used to create the user interface.
-Data Structures: Utilized Python dictionaries to manage user credentials and bus data.
+This project is a simple Bus Reservation System made using MySQL.
+It allows passengers to book seats and cancel bookings.
+The system automatically updates the available seats using SQL Triggers.
 
-Key Features
-Login System: Secure access using predefined usernames and passwords.
-Ticket Booking: Real-time seat availability and booking confirmation.
-Ticket Cancellation: Flexible cancellation with seat restoration logic.
-Bus Status Checker: Instantly view route, seat availability, and fare details.
+Features
 
-Learning Highlights
-Perfect for beginners learning GUI development in Python. Hands-on exposure to:
-GUI creation and layout management with Tkinter.
-Handling user input and form validation.
-Data manipulation using dictionaries.
-Implementing basic business logic like seat management and user flow.
+Book a seat for a passenger.
 
-Future Enhancements
-Open to expansion with features like:
-Database integration for persistent user and booking records.
-Dynamic user registration and authentication.
-Advanced UI design and seat selection interface.
-Integration of payment gateway and digital ticketing.
+Cancel a booking.
+
+Check available seats for each bus.
+
+Automatic seat update after booking or cancellation.
+
+Secure login system for users.
+
+Database Structure
+
+Tables:
+
+routes – Stores bus routes (source, destination, distance).
+
+buses – Stores bus details and available seats.
+
+users – Stores user login details.
+
+bookings – Stores booking details (passenger name, seat number, date).
+
+Keys:
+
+Primary Keys: route_id, bus_id, user_id, booking_id
+
+Foreign Keys:
+
+buses.route_id → routes.route_id
+
+bookings.bus_id → buses.bus_id
+
+bookings.user_id → users.user_id
+
+How It Works
+
+Booking a Seat
+
+Add a new record to the bookings table.
+
+The after_booking_insert trigger decreases available_seats by 1.
+
+Cancelling a Booking
+
+Call the cancel_booking() procedure with the booking ID.
+
+The after_booking_delete trigger increases available_seats by 1.
+
+Demo Commands
+-- Booking
+INSERT INTO bookings (passenger_name, seat_no, bus_id, user_id, booking_date)
+VALUES ('Reet Sharma', 5, 1, 1, CURDATE());
+
+-- Cancel Booking
+CALL cancel_booking(1);
+
+-- Check Buses Table
+SELECT * FROM buses;
+
+Advantages
+
+Easy to use and maintain.
+
+Automatic seat management.
+
+Real-time updates in the database.
+
+Can be extended for GUI or web interface.
